@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Object Detection with TensorFlow.js</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background-color: #f4f4f4;
+    }
+    #loader {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      width: 100vw;
+      background-color: #333;
+      color: #fff;
+      font-size: 20px;
+    }
+    #content {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    video, canvas {
+      max-width: 100%;
+      height: auto;
+      border-radius: 10px;
+    }
+    canvas {
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="loader">Loading model... Please wait.</div>
+  <div id="content">
+    <video id="webcam" autoplay muted playsinline></video>
+    <canvas id="overlay"></canvas>
+  </div>
+
+  <script>
+    const video = document.getElementById("webcam");
+    const canvas = document.getElementById("overlay");
+    const context = canvas.getContext("2d");
+    const loader = document.getElementById("loader");
+    const content = document.getElementById("content");
+
+    let model;
+
+    // Load the Coco SSD model
+    async function loadModel() {
+      console.log("Loading model...");
+      model = await cocoSsd.load();
+      console.log("Model loaded!");
+    }
+
+    // Start webcam stream
+    async function setupCamera() {
+      return new Promise((resolve, reject) => {
+        navigator.mediaDevices
+          .getUserMedia({ video: true })
+          .then((stream) => {
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+              resolve();
+            };
+          })
+          .catch((error) => reject(error));
+      });
+    }
+
+    // Detect objects in real time
+    async function detectObjects() {
+      const predictions = await model.detect(video);
+
+      // Clear the canvas
+      context.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Set canvas size to match video
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      // Draw predictions
+      predictions.forEach((prediction) => {
+        const [x, y, width, height] = prediction.bbox;
+
+        // Draw bounding box
+        context.strokeStyle = "#00FF00";
+        context.lineWidth = 2;
+        context.strokeRect(x, y, width, height);
+
+        // Draw label
+        context.fillStyle = "#00FF00";
+        context.font = "16px Arial";
+        context.fillText(
+          `${prediction.class} (${Math.round(prediction.score * 100)}%)`,
+          x,
+          y > 10 ? y - 5 : y + 15
+        );
+      });
+
+      // Keep detecting
+      requestAnimationFrame(detectObjects);
+    }
+
+    // Initialize the app
+    async function main() {
+      try {
+        await loadModel(); // Load the model
+        await setupCamera(); // Set up the camera
+        video.play(); // Start the video
+        loader.style.display = "none"; // Hide loader
+        content.style.display = "flex"; // Show content
+        detectObjects(); // Start detection
+      } catch (error) {
+        alert("Error initializing application: " + error.message);
+      }
+    }
+
+    main();
+  </script>
+</body>
+</html>
