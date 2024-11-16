@@ -86,6 +86,7 @@
     const thankYouModal = document.getElementById("thankYouModal");
 
     let model;
+    let predictions = [];
 
     // Load the COCO-SSD model
     async function loadModel() {
@@ -93,7 +94,7 @@
       console.log("Model loaded!");
     }
 
-    // Display the uploaded image and analyze it
+    // Display the uploaded image without showing predictions
     fileInput.addEventListener("change", async (event) => {
       const file = event.target.files[0];
       if (!file) return;
@@ -106,10 +107,15 @@
         canvas.height = img.height;
         context.drawImage(img, 0, 0);
 
-        // Analyze the image
-        const predictions = await model.detect(canvas);
+        // Analyze the image but do not display predictions yet
+        predictions = await model.detect(canvas);
+        console.log("Predictions analyzed but not displayed");
+      };
+    });
 
-        // Draw predictions on canvas
+    // Handle "Yes, Correct" button
+    correctButton.addEventListener("click", () => {
+      if (predictions.length > 0) {
         predictions.forEach((prediction) => {
           const [x, y, width, height] = prediction.bbox;
           context.strokeStyle = "#00FF00";
@@ -124,19 +130,12 @@
             y > 10 ? y - 5 : y + 15
           );
         });
-      };
-    });
 
-    // Handle "Yes, Correct" button
-    correctButton.addEventListener("click", () => {
-      canvas.width = 0;
-      canvas.height = 0;
-      fileInput.value = "";
-      thankYouModal.style.display = "flex";
-
-      setTimeout(() => {
-        thankYouModal.style.display = "none";
-      }, 2000);
+        thankYouModal.style.display = "flex";
+        setTimeout(() => {
+          thankYouModal.style.display = "none";
+        }, 2000);
+      }
     });
 
     // Handle "No, Reanalyze" button
